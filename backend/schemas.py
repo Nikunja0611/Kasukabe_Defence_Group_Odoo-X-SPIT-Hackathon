@@ -10,6 +10,12 @@ class ProductCreate(BaseModel):
     category: str
     price: float
 
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    category: Optional[str] = None
+    price: Optional[float] = None
+
 # --- MOVES ---
 class MoveCreate(BaseModel):
     product_id: int
@@ -17,6 +23,19 @@ class MoveCreate(BaseModel):
     dest_id: int
     qty: float
     type: str
+
+class AdjustmentCreate(BaseModel):
+    product_id: int
+    location_id: int
+    counted_qty: float
+    reason: Optional[str] = None
+
+class StatusUpdate(BaseModel):
+    status: str  # draft, waiting, ready, done, canceled
+
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    login_id: Optional[str] = None
 
 # --- USERS (Strict Validation) ---
 class UserCreate(BaseModel):

@@ -8,7 +8,6 @@ import {
   TrendingUp, 
   ShieldCheck, 
   Globe, 
-  ChevronRight, 
   ArrowRight,
   Package,
   Users,
