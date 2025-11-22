@@ -6,18 +6,19 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import models, schemas, database
+import random, string
 
-# --- AUTH CONFIG ---
-SECRET_KEY = "hackathon_secret_key" 
+# --- CONFIG ---
+SECRET_KEY = "hackathon_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
+# Use Argon2 for Python 3.13 compatibility
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") # Updated token URL
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 app = FastAPI(title="StockMaster API")
 
-# Allow React to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,7 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- AUTH FUNCTIONS ---
+# --- HELPERS ---
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -39,7 +40,7 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# Create Tables (Make sure models.User is in models.py before running this)
+# Create DB Tables
 models.Base.metadata.create_all(bind=database.engine)
 
 def get_db():
@@ -49,38 +50,86 @@ def get_db():
     finally:
         db.close()
 
-# --- AUTH ENDPOINTS (NEW) ---
+# --- AUTH ENDPOINTS ---
 
 @app.post("/auth/register")
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Check if user exists
-    user_exists = db.query(models.User).filter(models.User.email == user.email).first()
-    if user_exists:
+    # 1. Unique Login ID
+    if db.query(models.User).filter(models.User.login_id == user.login_id).first():
+        raise HTTPException(status_code=400, detail="Login ID already exists")
+
+    # 2. Unique Email
+    if db.query(models.User).filter(models.User.email == user.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create User
+    # 3. Create
     hashed_pw = get_password_hash(user.password)
-    new_user = models.User(email=user.email, hashed_password=hashed_pw, role="manager")
+    new_user = models.User(
+        login_id=user.login_id,
+        email=user.email, 
+        hashed_password=hashed_pw,
+        role=user.role 
+    )
     db.add(new_user)
     db.commit()
     return {"message": "User created successfully"}
 
 @app.post("/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Authenticate
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    # Note: OAuth2 form sends 'username', we map it to 'login_id'
+    user = db.query(models.User).filter(models.User.login_id == form_data.username).first()
+    
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Invalid Login Id or Password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Generate Token
-    access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user.login_id})
+    
+    # Return Role so Frontend can hide buttons
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer",
+        "role": user.role 
+    }
 
-# --- SEED DATA ENDPOINT ---
+# --- OTP ENDPOINTS ---
+@app.post("/auth/forgot-password")
+def forgot_password(request: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not registered")
+    
+    otp_code = ''.join(random.choices(string.digits, k=6))
+    db.query(models.OTP).filter(models.OTP.email == request.email).delete()
+    
+    new_otp = models.OTP(email=request.email, code=otp_code)
+    db.add(new_otp)
+    db.commit()
+    
+    return {"message": "OTP Sent", "debug_otp": otp_code}
+
+@app.post("/auth/reset-password")
+def reset_password(request: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    otp_record = db.query(models.OTP).filter(
+        models.OTP.email == request.email, 
+        models.OTP.code == request.otp
+    ).first()
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+    user.hashed_password = get_password_hash(request.new_password)
+    
+    db.delete(otp_record)
+    db.commit()
+    return {"message": "Password reset successfully"}
+
+# --- APP ENDPOINTS ---
+
 @app.post("/seed")
 def seed_data(db: Session = Depends(get_db)):
     if db.query(models.Location).count() == 0:
@@ -92,10 +141,9 @@ def seed_data(db: Session = Depends(get_db)):
         ]
         db.add_all(locs)
         db.commit()
-        return {"message": "Locations Seeded: 1=Vendor, 2=Stock, 3=Customer, 4=Loss"}
+        return {"message": "Seeded"}
     return {"message": "Already seeded"}
 
-# --- PRODUCTS ---
 @app.get("/products")
 def get_products(db: Session = Depends(get_db)):
     return db.query(models.Product).all()
@@ -108,57 +156,40 @@ def create_product(item: schemas.ProductCreate, db: Session = Depends(get_db)):
     db.refresh(db_item)
     return db_item
 
-# --- OPERATIONS (THE CORE LOGIC) ---
 @app.post("/moves")
 def create_move(move: schemas.MoveCreate, db: Session = Depends(get_db)):
-    # 1. Get Product
     product = db.query(models.Product).filter(models.Product.id == move.product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+    if not product: raise HTTPException(status_code=404, detail="Product not found")
     
-    # 2. Get Locations
     source = db.query(models.Location).filter(models.Location.id == move.source_id).first()
     
-    # 3. VALIDATION: If moving FROM internal stock, check availability
-    if source.type == "internal":
-        if product.stock_quantity < move.qty:
-            raise HTTPException(status_code=400, detail=f"Not enough stock! Available: {product.stock_quantity}")
+    if source.type == "internal" and product.stock_quantity < move.qty:
+        raise HTTPException(status_code=400, detail=f"Not enough stock! Available: {product.stock_quantity}")
 
-    # 4. Record Move
     new_move = models.StockMove(
         product_id=move.product_id, source_id=move.source_id, 
         dest_id=move.dest_id, qty=move.qty, type=move.type
     )
     
-    # 5. Update Stock Cache
-    if source.type == "vendor" or source.type == "adjustment": # Incoming
+    if source.type in ["vendor", "adjustment"]:
         product.stock_quantity += move.qty
-    elif source.type == "internal": # Outgoing
+    elif source.type == "internal":
         product.stock_quantity -= move.qty
-        
-        # Internal Transfer Logic (Cancel out subtraction if moving to internal)
         dest = db.query(models.Location).filter(models.Location.id == move.dest_id).first()
         if dest.type == "internal":
             product.stock_quantity += move.qty 
             
     db.add(new_move)
     db.commit()
-    return {"message": "Transfer Successful", "new_stock": product.stock_quantity}
+    return {"message": "Success", "new_stock": product.stock_quantity}
 
-# --- MOVE HISTORY (NEW) ---
 @app.get("/moves/history")
 def get_move_history(db: Session = Depends(get_db)):
-    # Returns all moves, newest first
     return db.query(models.StockMove).order_by(models.StockMove.created_at.desc()).all()
 
-# --- DASHBOARD ---
 @app.get("/dashboard")
 def dashboard_stats(db: Session = Depends(get_db)):
     total_products = db.query(models.Product).count()
     low_stock = db.query(models.Product).filter(models.Product.stock_quantity < 10).count()
     moves = db.query(models.StockMove).order_by(models.StockMove.id.desc()).limit(5).all()
-    return {
-        "total_products": total_products,
-        "low_stock": low_stock,
-        "recent_moves": moves
-    }
+    return {"total_products": total_products, "low_stock": low_stock, "recent_moves": moves}
