@@ -1,0 +1,90 @@
+/* File: MoveHistory.css
+   Uses purple palette: --light-purple (#9D70F9), --mid-purple (#7149D8), --deep-purple (#6C3AD6)
+   Background screenshot reference (local): /mnt/data/Screenshot 2025-11-22 at 2.36.36 PM.png
+*/
+
+:root{
+  --light-purple: #9D70F9;
+  --mid-purple:  #7149D8;
+  --deep-purple: #6C3AD6;
+  --muted: #6b7280;
+  --bg: #f7f6fb;
+}
+
+/* outer wrapper uses subtle gradient and a reference background for alignment testing */
+.mh-wrap{
+  padding: 40px;
+  background: linear-gradient(180deg, rgba(157,112,249,0.04) 0%, rgba(108,58,214,0.02) 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* optional: uncomment to compare against your screenshot reference */
+  /* background-image: url('/mnt/data/Screenshot 2025-11-22 at 2.36.36 PM.png'); background-size: cover; background-position: center; opacity: 0.08; */
+}
+
+/* main card */
+.mh-card{
+  width: 1100px;
+  background: linear-gradient(180deg, #FFFFFF, rgba(246,243,255,0.96));
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 12px 40px rgba(107,84,184,0.12);
+  border: 1px solid rgba(16,24,40,0.03);
+}
+
+/* header */
+.mh-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+}
+.mh-title{ font-size:28px; margin:0; color:#0f172a; }
+.mh-sub{ margin:4px 0 0; color:var(--muted); font-size:14px; }
+
+/* action buttons */
+.mh-actions{ display:flex; gap:12px; align-items:center; }
+.btn{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:600; font-size:14px; }
+.btn.export{ background:transparent; border:1px solid rgba(17,24,39,0.06); }
+.btn.new{ background: linear-gradient(90deg,var(--mid-purple),var(--deep-purple)); color:white; }
+
+/* controls line */
+.mh-controls{ display:flex; gap:16px; align-items:center; margin-top:18px; }
+.mh-search{ flex:1; padding:12px 14px; border-radius:10px; border:1px solid #e6e9ef; box-shadow: inset 0 1px 0 rgba(16,24,40,0.02); font-size:14px; }
+.mh-filters select{ padding:10px 12px; border-radius:10px; border:1px solid #e6e9ef; background:white; }
+
+/* table layout */
+.mh-table-wrap{ margin-top:18px; border-radius:12px; overflow:hidden; border:1px solid rgba(16,24,40,0.04); }
+.mh-table{ width:100%; border-collapse:collapse; background:transparent; }
+.mh-table thead th{ text-align:left; padding:14px 18px; font-size:12px; color:#6b7280; letter-spacing:0.6px; text-transform:uppercase; background:#fafafa; }
+.mh-table tbody td{ padding:16px 18px; border-top:1px solid rgba(16,24,40,0.04); vertical-align:middle; color:#0f172a; font-size:14px; }
+.mh-table tbody tr td.mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; color:#111827; }
+.empty-row td{ text-align:center; padding:36px; color:var(--muted); }
+
+/* badges */
+.badge{ display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700; font-size:12px; }
+.badge-receipt{ background: linear-gradient(90deg, rgba(157,112,249,0.12), rgba(108,58,214,0.08)); color:var(--deep-purple); border:1px solid rgba(108,58,214,0.06); }
+.badge-delivery{ background: linear-gradient(90deg, rgba(113,73,216,0.08), rgba(108,58,214,0.04)); color:var(--mid-purple); border:1px solid rgba(113,73,216,0.05); }
+.badge-internal{ background: rgba(16,185,129,0.08); color: #059669; border:1px solid rgba(16,185,129,0.06); }
+
+/* status badges */
+.badge-status-done{ background:#d1fae5; color:#065f46; border:1px solid rgba(6,95,70,0.06); }
+.badge-status-ready{ background:#fef3c7; color:#92400e; border:1px solid rgba(146,64,14,0.06); }
+.badge-status-waiting{ background:#fff7ed; color:#92400e; border:1px solid rgba(146,64,14,0.06); }
+.badge-status-canceled{ background:#fee2e2; color:#b91c1c; border:1px solid rgba(185,28,28,0.06); }
+.badge-status-draft{ background:#eef2ff; color:#3730a3; border:1px solid rgba(55,48,163,0.06); }
+
+/* footer + pagination */
+.mh-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; color:var(--muted); }
+.pagination{ display:flex; gap:8px; align-items:center; }
+.pagination button{ border:1px solid rgba(16,24,40,0.06); padding:8px 10px; border-radius:8px; background:white; cursor:pointer; }
+.pagination button.active{ background: linear-gradient(90deg,var(--light-purple),var(--mid-purple)); color:white; border:none; }
+.pagination .dots{ padding:0 6px; }
+
+/* small screens */
+@media (max-width: 980px){
+  .mh-card{ width:100%; padding:18px; border-radius:12px; }
+  .mh-table tbody td{ padding:12px; }
+  .mh-controls{ flex-direction:column; align-items:stretch; }
+}
