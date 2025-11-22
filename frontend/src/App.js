@@ -59,7 +59,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} /> {/* <--- ADD THIS ROUTE */}
           
           {/* Protected Routes */}
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/products" element={<Products />} />
           <Route path="/operations" element={<Operations />} />
           <Route path="/history" element={<MoveHistory />} />

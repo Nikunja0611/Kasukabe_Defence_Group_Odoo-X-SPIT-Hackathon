@@ -24,7 +24,7 @@ export default function Login() {
       localStorage.setItem('token', res.data.access_token);
       localStorage.setItem('role', res.data.role); 
       
-      navigate('/'); // Redirect to Dashboard
+      navigate('/dashboard'); // Redirect to Dashboard
     } catch (err) {
       // Show the specific error from backend (e.g., "Invalid Login Id or Password")
       setError(err.response?.data?.detail || 'Invalid Login Id or Password');
