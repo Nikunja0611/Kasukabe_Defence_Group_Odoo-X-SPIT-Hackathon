@@ -13,3 +13,7 @@ class MoveCreate(BaseModel):
     dest_id: int
     qty: float
     type: str
+
+class UserCreate(BaseModel):
+    email: str
+    password: str

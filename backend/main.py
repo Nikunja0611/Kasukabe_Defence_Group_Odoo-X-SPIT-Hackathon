@@ -1,7 +1,19 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
 import models, schemas, database
+
+# --- AUTH CONFIG ---
+SECRET_KEY = "hackathon_secret_key" 
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") # Updated token URL
 
 app = FastAPI(title="StockMaster API")
 
@@ -14,7 +26,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create Tables
+# --- AUTH FUNCTIONS ---
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# Create Tables (Make sure models.User is in models.py before running this)
 models.Base.metadata.create_all(bind=database.engine)
 
 def get_db():
@@ -24,7 +49,38 @@ def get_db():
     finally:
         db.close()
 
-# --- SEED DATA ENDPOINT (Run this once) ---
+# --- AUTH ENDPOINTS (NEW) ---
+
+@app.post("/auth/register")
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Check if user exists
+    user_exists = db.query(models.User).filter(models.User.email == user.email).first()
+    if user_exists:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create User
+    hashed_pw = get_password_hash(user.password)
+    new_user = models.User(email=user.email, hashed_password=hashed_pw, role="manager")
+    db.add(new_user)
+    db.commit()
+    return {"message": "User created successfully"}
+
+@app.post("/auth/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Authenticate
+    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Generate Token
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- SEED DATA ENDPOINT ---
 @app.post("/seed")
 def seed_data(db: Session = Depends(get_db)):
     if db.query(models.Location).count() == 0:
@@ -79,18 +135,21 @@ def create_move(move: schemas.MoveCreate, db: Session = Depends(get_db)):
         product.stock_quantity += move.qty
     elif source.type == "internal": # Outgoing
         product.stock_quantity -= move.qty
-        # Note: If dest is also internal, we should add it back? 
-        # For simplicity in hackathon: 
-        # If Source=Internal & Dest=Internal (Transfer), stock stays same globally, 
-        # but strictly speaking, this model tracks global count. 
-        # For simple logic:
+        
+        # Internal Transfer Logic (Cancel out subtraction if moving to internal)
         dest = db.query(models.Location).filter(models.Location.id == move.dest_id).first()
         if dest.type == "internal":
-            product.stock_quantity += move.qty # Cancel out the subtraction
+            product.stock_quantity += move.qty 
             
     db.add(new_move)
     db.commit()
     return {"message": "Transfer Successful", "new_stock": product.stock_quantity}
+
+# --- MOVE HISTORY (NEW) ---
+@app.get("/moves/history")
+def get_move_history(db: Session = Depends(get_db)):
+    # Returns all moves, newest first
+    return db.query(models.StockMove).order_by(models.StockMove.created_at.desc()).all()
 
 # --- DASHBOARD ---
 @app.get("/dashboard")
