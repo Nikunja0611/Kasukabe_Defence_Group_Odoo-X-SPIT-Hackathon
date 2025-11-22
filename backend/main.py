@@ -251,7 +251,50 @@ def get_move_history(db: Session = Depends(get_db)):
 
 @app.get("/dashboard")
 def dashboard_stats(db: Session = Depends(get_db)):
+    # 1. Basic Product Stats
     total_products = db.query(models.Product).count()
     low_stock = db.query(models.Product).filter(models.Product.stock_quantity < 10).count()
-    moves = db.query(models.StockMove).order_by(models.StockMove.id.desc()).limit(5).all()
-    return {"total_products": total_products, "low_stock": low_stock, "recent_moves": moves}
+    
+    # 2. Recent Moves (Limit 5)
+    moves = db.query(models.StockMove).order_by(models.StockMove.created_at.desc()).limit(5).all()
+
+    # 3. Calculate Receipt Stats
+    # "To Process" = Status is NOT done (assuming 'draft' or similar)
+    receipts_to_process = db.query(models.StockMove).filter(
+        models.StockMove.type == 'receipt',
+        models.StockMove.status != 'done'
+    ).count()
+    
+    receipts_total = db.query(models.StockMove).filter(models.StockMove.type == 'receipt').count()
+    
+    # Mocking 'late' logic for hackathon (e.g., if older than 2 days and not done)
+    # In production, compare created_at with datetime.now()
+    receipts_late = 0 
+
+    # 4. Calculate Delivery Stats
+    deliveries_to_process = db.query(models.StockMove).filter(
+        models.StockMove.type == 'delivery',
+        models.StockMove.status != 'done'
+    ).count()
+    
+    deliveries_total = db.query(models.StockMove).filter(models.StockMove.type == 'delivery').count()
+    deliveries_late = 0
+    deliveries_waiting = 0 # Placeholder
+
+    return {
+        "total_products": total_products,
+        "low_stock": low_stock,
+        "recent_moves": moves,
+        # New Nested Data for UI
+        "receipts": {
+            "to_process": receipts_to_process,
+            "late": receipts_late,
+            "total": receipts_total
+        },
+        "deliveries": {
+            "to_process": deliveries_to_process,
+            "late": deliveries_late,
+            "waiting": deliveries_waiting,
+            "total": deliveries_total
+        }
+    }

@@ -26,7 +26,7 @@ class StockMove(Base):
     dest_id = Column(Integer, ForeignKey("locations.id"))
     qty = Column(Float)
     type = Column(String(50)) # receipt, delivery, internal
-    status = Column(String(20), default="done")
+    status = Column(String(20), default="draft") # Ensure default is draft if you want pending items
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product")

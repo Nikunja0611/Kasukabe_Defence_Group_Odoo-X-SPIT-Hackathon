@@ -1,37 +1,80 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
-import Products from './pages/Products';
+import Products from './pages/Products'; // This corresponds to "Stock" in your navbar
 import Operations from './pages/Operations';
 import MoveHistory from './pages/MoveHistory';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword'; // <--- IMPORT THIS
-import './App.css';
+import ForgotPassword from './pages/ForgotPassword'; 
+import './App.css'; // Ensure your styles are imported
 
 function Layout({ children }) {
   const location = useLocation();
-  // Add '/forgot-password' to the list of auth pages so navbar hides
+  // Define public pages that do NOT need the Navbar
   const isAuthPage = ['/login', '/register', '/forgot-password'].includes(location.pathname);
+  
+  // Check Authentication Status
   const isAuthenticated = !!localStorage.getItem('token');
 
+  // SECURITY: Redirect unauthenticated users to Login
   if (!isAuthPage && !isAuthenticated) {
     return <Navigate to="/login" />;
   }
 
+  // Redirect logged-in users away from Auth pages
+  if (isAuthPage && isAuthenticated) {
+    return <Navigate to="/" />;
+  }
+
   return (
-    <>
+    <div className={isAuthPage ? "auth-container" : "app-container"}>
+      {/* Show Navbar only inside the protected app */}
       {!isAuthPage && (
         <nav className="navbar">
-          <div className="nav-brand">Quantix IMS</div>
-          <div className="nav-links">
-            <Link to="/">Overview</Link>
-            <Link to="/operations">Operations</Link>
-            <Link to="/history">History</Link>
-            <Link to="/products">Products</Link>
+          <div className="navbar-left">
+            <div className="nav-brand">StockOps</div>
+            <div className="nav-links">
+              {/* Navigation Links Matching Your Wireframe */}
+              <Link 
+                to="/" 
+                className={location.pathname === '/' ? 'active' : ''}
+              >
+                Dashboard
+              </Link>
+              
+              <Link 
+                to="/operations" 
+                className={location.pathname === '/operations' ? 'active' : ''}
+              >
+                Operations
+              </Link>
+              
+              <Link 
+                to="/products" 
+                className={location.pathname === '/products' ? 'active' : ''}
+              >
+                Stock
+              </Link>
+              
+              <Link 
+                to="/history" 
+                className={location.pathname === '/history' ? 'active' : ''}
+              >
+                Move History
+              </Link>
+              
+              <Link 
+                to="/settings" 
+                className={location.pathname === '/settings' ? 'active' : ''}
+              >
+                Settings
+              </Link>
+            </div>
           </div>
-          <div className="nav-auth">
-            <button onClick={() => {
+          
+          <div className="navbar-right">
+            <button className="logout-btn" onClick={() => {
               localStorage.removeItem('token');
               localStorage.removeItem('role');
               window.location.href = '/login';
@@ -39,10 +82,12 @@ function Layout({ children }) {
           </div>
         </nav>
       )}
-      <div className={!isAuthPage ? "container" : ""}>
+      
+      {/* Main Content Area */}
+      <div className={!isAuthPage ? "main-content" : "auth-content"}>
         {children}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -51,16 +96,24 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          {/* Auth Routes */}
+          {/* --- Auth Routes --- */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} /> {/* <--- ADD THIS ROUTE */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           
-          {/* Protected Routes */}
+          {/* --- Protected Routes (Your Functional Pages) --- */}
           <Route path="/" element={<Dashboard />} />
-          <Route path="/products" element={<Products />} />
           <Route path="/operations" element={<Operations />} />
+          <Route path="/products" element={<Products />} /> {/* "Stock" Link goes here */}
           <Route path="/history" element={<MoveHistory />} />
+          
+          {/* Placeholder Route for Settings (To prevent 404) */}
+          <Route path="/settings" element={
+            <div style={{textAlign: 'center', padding: '50px', background: 'white', borderRadius: '8px', marginTop: '20px'}}>
+                <h2>Settings</h2>
+                <p style={{color: '#666'}}>Warehouse Configuration & User Management coming soon...</p>
+            </div>
+          } />
         </Routes>
       </Layout>
     </Router>
