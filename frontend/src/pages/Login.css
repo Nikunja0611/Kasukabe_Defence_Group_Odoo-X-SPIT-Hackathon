@@ -1,0 +1,277 @@
+/* ================= PAGE & VIDEO BACKGROUND ================= */
+
+.login-page {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Video fills the viewport; keep fully visible */
+.login-bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -3;
+  filter: brightness(1) contrast(1.03) saturate(1.06);
+}
+
+/* No overlay so the video remains visible */
+.login-overlay {
+  display: none;
+}
+
+/* ================= CENTER CARD ================= */
+
+.login-card {
+  width: min(1024px, 94vw);
+  height: min(560px, 85vh);
+
+  display: flex;
+  border-radius: 28px;
+  overflow: hidden;
+  z-index: 2;
+
+  /* Glass + soft pastel gradient that matches background */
+  background: linear-gradient(
+    135deg,
+    rgba(255,255,255,0.56) 0%,
+    rgba(202,189,255,0.36) 45%,
+    rgba(135,102,235,0.28) 100%
+  );
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+
+  border: 1px solid rgba(255,255,255,0.45);
+  box-shadow: 0 28px 80px rgba(69,50,120,0.28);
+}
+
+/* ================= LEFT HALF (Branding / Image) ================= */
+
+.login-card-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px;
+  text-align: center;
+
+  /* Soft purple gradient tuned to the video colors */
+  background: linear-gradient(135deg, #9D70F9 0%, #7149D8 100%);
+  color: #fff;
+}
+
+/* left content sizing */
+.login-left-content {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-left-content h1 {
+  margin: 0 0 8px 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #fff;
+}
+
+.login-left-content p {
+  margin: 0 0 18px 0;
+  font-size: 15px;
+  opacity: 0.95;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.95);
+}
+
+/* make side image larger and cleaner */
+.login-side-image {
+  width: 82%;
+  max-width: 380px;
+  height: auto;
+  border-radius: 18px;
+  object-fit: cover;
+  margin-top: 12px;
+  box-shadow: 0 20px 48px rgba(24,12,48,0.38);
+}
+
+/* ================= RIGHT HALF (Form) ================= */
+
+.login-card-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+
+  /* Form area lighter to maximize readability while still seeing video */
+  background: linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.70) 100%);
+  backdrop-filter: blur(6px);
+}
+
+/* form wrapper centered */
+.auth-box {
+  width: 86%;
+  max-width: 400px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* typography adjustments */
+.auth-title {
+  margin: 0 0 6px 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #2E254D; /* deep but soft */
+  letter-spacing: 0.2px;
+}
+
+.auth-subtitle {
+  margin: 0 0 18px 0;
+  font-size: 14px;
+  color: #6D648A;
+}
+
+/* ================= FORM FIELDS ================= */
+
+form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+/* groups centered */
+.form-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* labels centered above inputs */
+.form-group label {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #4a4057;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+/* inputs: rounded, roomy, and soft border */
+.form-group input {
+  width: 92%;
+  max-width: 360px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(120,100,170,0.24);
+  background: rgba(255,255,255,0.98);
+  font-size: 14px;
+  color: #2b2630;
+  box-shadow: 0 8px 22px rgba(46,36,66,0.06);
+  transition: box-shadow 0.14s ease, transform 0.08s ease, border-color 0.12s ease;
+}
+
+.form-group input::placeholder {
+  color: #9e95a9;
+}
+
+/* focus state */
+.form-group input:focus {
+  border-color: #7149D8;
+  box-shadow: 0 14px 40px rgba(113,73,216,0.12);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+/* error text */
+.auth-error {
+  width: 100%;
+  text-align: center;
+  color: #c13a4a;
+  font-size: 13px;
+}
+
+/* ================= SIGN-IN BUTTON ================= */
+
+.auth-button {
+  width: 92%;
+  max-width: 360px;
+  padding: 12px 16px;
+  margin-top: 6px;
+  border-radius: 20px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7149D8 0%, #9D70F9 100%);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 18px 48px rgba(113,73,216,0.20);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
+}
+
+.auth-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 70px rgba(113,73,216,0.26);
+}
+
+/* ================= FOOTER LINKS ================= */
+
+.auth-footer {
+  margin-top: 14px;
+  font-size: 13px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  color: #6d648a;
+  width: 100%;
+}
+
+.auth-link {
+  cursor: pointer;
+  color: #6c4fa8;
+  font-weight: 700;
+}
+
+.auth-separator {
+  color: rgba(92,78,113,0.45);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 920px) {
+  .login-card {
+    flex-direction: column;
+    width: min(480px, 96vw);
+    height: auto;
+    border-radius: 18px;
+  }
+
+  .login-card-left {
+    display: none; /* keep focusing on form on small screens */
+  }
+
+  .login-card-right {
+    padding: 28px;
+    background: rgba(255,255,255,0.86);
+  }
+
+  .auth-box { max-width: 100%; width: 94%; }
+  .form-group input, .auth-button { width: 100%; max-width: none; }
+}

@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Connection String: user:password@localhost/dbname
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://stockuser:stockpass@localhost/stockmaster"
+SQLALCHEMY_DATABASE_URL = "mysql+pymysql://stockuser:@localhost/stockmaster"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
