@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+from typing import List
 import models, schemas, database
 import random
 import string
@@ -245,9 +246,18 @@ def create_move(move: schemas.MoveCreate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Success", "new_stock": product.stock_quantity}
 
-@app.get("/moves/history")
+@app.get("/moves/history", response_model=List[schemas.MoveResponse])
 def get_move_history(db: Session = Depends(get_db)):
-    return db.query(models.StockMove).order_by(models.StockMove.created_at.desc()).all()
+    moves = db.query(models.StockMove)\
+        .options(joinedload(models.StockMove.product), 
+                 joinedload(models.StockMove.source), 
+                 joinedload(models.StockMove.dest))\
+        .order_by(models.StockMove.created_at.desc()).all()
+    return moves
+
+@app.get("/locations")
+def get_locations(db: Session = Depends(get_db)):
+    return db.query(models.Location).all()
 
 @app.get("/dashboard")
 def dashboard_stats(db: Session = Depends(get_db)):
@@ -255,8 +265,12 @@ def dashboard_stats(db: Session = Depends(get_db)):
     total_products = db.query(models.Product).count()
     low_stock = db.query(models.Product).filter(models.Product.stock_quantity < 10).count()
     
-    # 2. Recent Moves (Limit 5)
-    moves = db.query(models.StockMove).order_by(models.StockMove.created_at.desc()).limit(5).all()
+    # 2. Recent Moves (Limit 5) - Include relationships
+    moves = db.query(models.StockMove)\
+        .options(joinedload(models.StockMove.product), 
+                 joinedload(models.StockMove.source), 
+                 joinedload(models.StockMove.dest))\
+        .order_by(models.StockMove.created_at.desc()).limit(5).all()
 
     # 3. Calculate Receipt Stats
     # "To Process" = Status is NOT done (assuming 'draft' or similar)
@@ -280,11 +294,18 @@ def dashboard_stats(db: Session = Depends(get_db)):
     deliveries_total = db.query(models.StockMove).filter(models.StockMove.type == 'delivery').count()
     deliveries_late = 0
     deliveries_waiting = 0 # Placeholder
+    
+    # 5. Calculate Internal Transfer Stats
+    internal_transfers_scheduled = db.query(models.StockMove).filter(
+        models.StockMove.type == 'internal',
+        models.StockMove.status != 'done'
+    ).count()
 
     return {
         "total_products": total_products,
         "low_stock": low_stock,
         "recent_moves": moves,
+        "internal_transfers_scheduled": internal_transfers_scheduled,
         # New Nested Data for UI
         "receipts": {
             "to_process": receipts_to_process,

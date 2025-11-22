@@ -14,6 +14,15 @@ export default function MoveHistory() {
     return 'badge badge-internal';
   }
 
+  const getStatusBadge = (status) => {
+    const statusLower = status?.toLowerCase() || 'draft';
+    if(statusLower === 'done') return 'badge badge-status-done';
+    if(statusLower === 'ready') return 'badge badge-status-ready';
+    if(statusLower === 'waiting') return 'badge badge-status-waiting';
+    if(statusLower === 'canceled') return 'badge badge-status-canceled';
+    return 'badge badge-status-draft';
+  }
+
   return (
     <div className="container">
       <div className="card">
@@ -27,6 +36,7 @@ export default function MoveHistory() {
               <th>To</th>
               <th>Qty</th>
               <th>Type</th>
+              <th>Status</th>
               <th>Date</th>
             </tr>
           </thead>
@@ -34,11 +44,12 @@ export default function MoveHistory() {
             {moves.map(m => (
               <tr key={m.id}>
                 <td>#MV{m.id}</td>
-                <td>Product ID: {m.product_id}</td> {/* In real app, join name */}
-                <td>{m.source_id === 1 ? 'Vendor' : m.source_id === 2 ? 'Stock' : 'Customer'}</td>
-                <td>{m.dest_id === 1 ? 'Vendor' : m.dest_id === 2 ? 'Stock' : 'Customer'}</td>
+                <td>{m.product?.name || `Product ID: ${m.product_id}`}</td>
+                <td>{m.source?.name || `Location ID: ${m.source_id}`}</td>
+                <td>{m.dest?.name || `Location ID: ${m.dest_id}`}</td>
                 <td>{m.qty}</td>
                 <td><span className={getBadge(m.type)}>{m.type.toUpperCase()}</span></td>
+                <td><span className={getStatusBadge(m.status)}>{m.status?.toUpperCase() || 'DRAFT'}</span></td>
                 <td>{new Date(m.created_at).toLocaleDateString()}</td>
               </tr>
             ))}

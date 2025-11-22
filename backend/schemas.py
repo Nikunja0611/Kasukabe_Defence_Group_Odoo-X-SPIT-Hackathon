@@ -1,5 +1,6 @@
 from pydantic import BaseModel, validator, EmailStr
 from typing import Optional
+from datetime import datetime
 import re
 
 # --- PRODUCTS ---
@@ -50,3 +51,37 @@ class PasswordResetConfirm(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
+
+# --- RESPONSE SCHEMAS ---
+class LocationResponse(BaseModel):
+    id: int
+    name: str
+    type: str
+    
+    class Config:
+        from_attributes = True
+
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    sku: str
+    category: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class MoveResponse(BaseModel):
+    id: int
+    product_id: int
+    source_id: int
+    dest_id: int
+    qty: float
+    type: str
+    status: str
+    created_at: datetime
+    product: Optional[ProductResponse] = None
+    source: Optional[LocationResponse] = None
+    dest: Optional[LocationResponse] = None
+    
+    class Config:
+        from_attributes = True
