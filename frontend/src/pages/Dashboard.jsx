@@ -8,6 +8,7 @@ export default function Dashboard() {
     total_products: 0,
     low_stock: 0,
     recent_moves: [],
+    internal_transfers_scheduled: 0,
     receipts: { to_process: 0, late: 0, total: 0 },
     deliveries: { to_process: 0, late: 0, waiting: 0, total: 0 }
   });
@@ -167,6 +168,21 @@ export default function Dashboard() {
 
       </div>
 
+      {/* Internal Transfers Card */}
+      <div className="ops-grid" style={{marginBottom: '40px'}}>
+        <div className="ops-card" style={{borderLeftColor: '#B7791F'}}>
+          <div className="ops-title">Internal Transfers</div>
+          <div className="ops-content">
+            <button className="action-btn" onClick={() => goToOperations('internal')} style={{backgroundColor: '#B7791F'}}>
+              {stats.internal_transfers_scheduled || 0} Scheduled
+            </button>
+            <div className="ops-stats">
+              <span className="stat-item">Internal movements</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Recent Moves Table */}
       <div className="table-section">
         <h2>Recent Stock Moves</h2>
@@ -174,6 +190,7 @@ export default function Dashboard() {
           <thead>
             <tr>
               <th>Reference</th>
+              <th>Product</th>
               <th>Type</th>
               <th>Quantity</th>
               <th>Status</th>
@@ -184,14 +201,15 @@ export default function Dashboard() {
                 stats.recent_moves.map(m => (
                   <tr key={m.id}>
                     <td>MV-{m.id.toString().padStart(4, '0')}</td>
+                    <td>{m.product?.name || `Product ID: ${m.product_id}`}</td>
                     <td><span className={getTypeBadge(m.type)}>{m.type}</span></td>
                     <td>{m.qty}</td>
-                    <td>{m.status}</td>
+                    <td><span className={`badge badge-status-${m.status?.toLowerCase() || 'draft'}`}>{m.status?.toUpperCase() || 'DRAFT'}</span></td>
                   </tr>
                 ))
             ) : (
                 <tr>
-                    <td colSpan="4" style={{textAlign: 'center', padding: '30px', color: '#999'}}>
+                    <td colSpan="5" style={{textAlign: 'center', padding: '30px', color: '#999'}}>
                         No recent operations found.
                     </td>
                 </tr>

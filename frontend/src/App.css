@@ -196,6 +196,11 @@ table tr:hover { background: #FDFDFD; }
 .badge-in, .badge-receipt { background: #E6F4EA; color: var(--success); }
 .badge-out, .badge-delivery { background: #FEECED; color: var(--danger); }
 .badge-internal { background: #FFF8E1; color: #B7791F; }
+.badge-status-draft { background: #E8E8E8; color: #666; }
+.badge-status-waiting { background: #FFF3CD; color: #856404; }
+.badge-status-ready { background: #D1ECF1; color: #0C5460; }
+.badge-status-done { background: #D4EDDA; color: #155724; }
+.badge-status-canceled { background: #F8D7DA; color: #721C24; }
 
 /* --- UTILS --- */
 .add-btn { 

@@ -4,3 +4,8 @@ sqlalchemy
 pymysql
 pydantic
 python-multipart
+email-validator
+passlib[argon2]
+python-jose[cryptography]
+argon2-cffi
+cryptography
