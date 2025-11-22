@@ -6,12 +6,22 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import models, schemas, database
-import random, string
+import random
+import string
+import smtplib
+from email.mime.text import MIMEText
 
 # --- CONFIG ---
 SECRET_KEY = "hackathon_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+# --- EMAIL CONFIGURATION ---
+# 1. ENTER YOUR GMAIL ADDRESS HERE:
+SENDER_EMAIL = "stockops.ims@gmail.com" 
+
+# 2. YOUR APP PASSWORD (Pre-filled):
+SENDER_PASSWORD = "bxhh nzch fkxf ylxl" 
 
 # Use Argon2 for Python 3.13 compatibility
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -39,6 +49,31 @@ def create_access_token(data: dict):
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+# --- EMAIL SENDING FUNCTION (REAL SMTP) ---
+def send_otp_email(to_email, otp_code):
+    try:
+        # Create Email Content
+        subject = "StockOps Password Reset"
+        body = f"Your One-Time Password (OTP) for resetting your password is: {otp_code}\n\nThis code expires in 10 minutes."
+        
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+
+        # Connect to Gmail SMTP (Port 587 for TLS)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # Secure the connection
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"✅ Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Email Failed. Error: {e}")
+        return False
 
 # Create DB Tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -95,35 +130,62 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "role": user.role 
     }
 
-# --- OTP ENDPOINTS ---
+# --- OTP ENDPOINTS (UPDATED FOR REAL EMAIL) ---
 @app.post("/auth/forgot-password")
 def forgot_password(request: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    # 1. Check if user exists
     user = db.query(models.User).filter(models.User.email == request.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not registered")
     
+    # 2. Generate OTP
     otp_code = ''.join(random.choices(string.digits, k=6))
-    db.query(models.OTP).filter(models.OTP.email == request.email).delete()
     
+    # 3. Save to DB (Delete old OTPs first)
+    db.query(models.OTP).filter(models.OTP.email == request.email).delete()
     new_otp = models.OTP(email=request.email, code=otp_code)
     db.add(new_otp)
     db.commit()
     
-    return {"message": "OTP Sent", "debug_otp": otp_code}
+    # 4. Send Real Email
+    success = send_otp_email(request.email, otp_code)
+    
+    if not success:
+        # If email fails, return 500 error so frontend knows
+        raise HTTPException(status_code=500, detail="Failed to send email. Check server logs.")
+        
+    return {"message": "OTP Sent to your email"}
 
-@app.post("/auth/reset-password")
-def reset_password(request: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+# --- NEW ENDPOINT: VERIFY OTP ---
+@app.post("/auth/verify-otp")
+def verify_otp(request: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    # Note: We reuse PasswordResetConfirm schema but ignore password fields here
     otp_record = db.query(models.OTP).filter(
         models.OTP.email == request.email, 
         models.OTP.code == request.otp
     ).first()
     
     if not otp_record:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
+        raise HTTPException(status_code=400, detail="Invalid or Expired OTP")
     
+    return {"message": "OTP Verified"}
+
+@app.post("/auth/reset-password")
+def reset_password(request: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    # 1. Verify OTP AGAIN (Security Check)
+    otp_record = db.query(models.OTP).filter(
+        models.OTP.email == request.email, 
+        models.OTP.code == request.otp
+    ).first()
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="Invalid or Expired OTP")
+    
+    # 2. Update Password
     user = db.query(models.User).filter(models.User.email == request.email).first()
     user.hashed_password = get_password_hash(request.new_password)
     
+    # 3. Delete OTP
     db.delete(otp_record)
     db.commit()
     return {"message": "Password reset successfully"}
