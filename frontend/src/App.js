@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Operations from './pages/Operations';
 import MoveHistory from './pages/MoveHistory';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword'; // <--- IMPORT THIS
@@ -23,7 +24,7 @@ function Layout({ children }) {
     <>
       {!isAuthPage && (
         <nav className="navbar">
-          <div className="nav-brand">Quantix IMS</div>
+          <div className="nav-brand">StockOps</div>
           <div className="nav-links">
             <Link to="/">Overview</Link>
             <Link to="/operations">Operations</Link>
@@ -52,6 +53,7 @@ function App() {
       <Layout>
         <Routes>
           {/* Auth Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} /> {/* <--- ADD THIS ROUTE */}
