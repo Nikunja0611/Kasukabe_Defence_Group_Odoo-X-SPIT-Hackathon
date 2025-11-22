@@ -1,0 +1,200 @@
+/* File: Products.css */
+
+:root {
+  --light-purple: #9D70F9;
+  --mid-purple: #7149D8;
+  --deep-purple: #6C3AD6;
+  --muted: #6b7280;
+}
+
+/* PAGE WRAPPER */
+.p-wrap {
+  padding: 40px;
+  background: rgba(157, 112, 249, 0.05);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+/* MAIN CARD */
+.p-card {
+  width: 1100px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* HEADER */
+.p-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.p-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.sub {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* BUTTONS */
+.btn {
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  border: none;
+  font-size: 14px;
+}
+
+.btn.new {
+  background: linear-gradient(90deg, var(--mid-purple), var(--deep-purple));
+  color: #ffffff;
+}
+
+.btn.filter,
+.btn.export {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+/* CONTROLS (SEARCH + FILTER + EXPORT) */
+.p-controls {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+}
+
+.search {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+/* TABLE */
+.p-table-wrap {
+  margin-top: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #eeeeee;
+}
+
+.p-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.p-table th {
+  background: #fafafa;
+  text-align: left;
+  padding: 14px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
+.p-table td {
+  padding: 16px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+/* BADGES */
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.stock {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge.low {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge.out {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* ACTIONS COLUMN */
+.actions {
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* ------------- ADD NEW PRODUCT FORM ------------- */
+
+.p-add-form {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.field-group input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.field-group input:focus {
+  outline: none;
+  border-color: var(--mid-purple);
+  box-shadow: 0 0 0 1px rgba(113, 73, 216, 0.15);
+}
+
+/* row with SKU + Price */
+.field-row {
+  display: flex;
+  gap: 20px;
+}
+
+.field-row .field-group {
+  flex: 1;
+}
+
+/* bottom buttons: Cancel + Save */
+.add-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .p-card {
+    width: 100%;
+  }
+
+  .field-row {
+    flex-direction: column;
+  }
+}
