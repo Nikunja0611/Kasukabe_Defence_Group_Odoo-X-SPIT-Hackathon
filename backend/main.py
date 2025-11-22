@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 import models, schemas, database
 import random
 import string
@@ -85,6 +85,24 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        login_id: str = payload.get("sub")
+        if login_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = db.query(models.User).filter(models.User.login_id == login_id).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
 # --- AUTH ENDPOINTS ---
 
@@ -191,6 +209,50 @@ def reset_password(request: schemas.PasswordResetConfirm, db: Session = Depends(
     db.commit()
     return {"message": "Password reset successfully"}
 
+@app.get("/auth/me")
+def get_current_user_info(current_user: models.User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "login_id": current_user.login_id,
+        "email": current_user.email,
+        "role": current_user.role
+    }
+
+@app.put("/auth/me")
+def update_user_profile(
+    user_update: schemas.UserUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if email is being updated and if it's unique
+    if user_update.email and user_update.email != current_user.email:
+        existing = db.query(models.User).filter(models.User.email == user_update.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if login_id is being updated and if it's unique
+    if user_update.login_id and user_update.login_id != current_user.login_id:
+        if not (6 <= len(user_update.login_id) <= 12):
+            raise HTTPException(status_code=400, detail="Login ID must be between 6 and 12 characters")
+        existing = db.query(models.User).filter(models.User.login_id == user_update.login_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Login ID already exists")
+    
+    # Update only provided fields
+    update_data = user_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "id": current_user.id,
+        "login_id": current_user.login_id,
+        "email": current_user.email,
+        "role": current_user.role,
+        "message": "Profile updated successfully"
+    }
+
 # --- APP ENDPOINTS ---
 
 @app.post("/seed")
@@ -208,8 +270,38 @@ def seed_data(db: Session = Depends(get_db)):
     return {"message": "Already seeded"}
 
 @app.get("/products")
-def get_products(db: Session = Depends(get_db)):
-    return db.query(models.Product).all()
+def get_products(
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    low_stock: Optional[bool] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Product)
+    
+    # Search filter (name or SKU)
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (models.Product.name.like(search_term)) |
+            (models.Product.sku.like(search_term))
+        )
+    
+    # Category filter
+    if category:
+        query = query.filter(models.Product.category == category)
+    
+    # Low stock filter (stock < 10)
+    if low_stock is not None and low_stock:
+        query = query.filter(models.Product.stock_quantity < 10)
+    
+    return query.all()
+
+@app.get("/products/{product_id}")
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
 
 @app.post("/products")
 def create_product(item: schemas.ProductCreate, db: Session = Depends(get_db)):
@@ -218,6 +310,52 @@ def create_product(item: schemas.ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_item)
     return db_item
+
+@app.put("/products/{product_id}")
+def update_product(product_id: int, item: schemas.ProductUpdate, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Check if SKU is being updated and if it's unique
+    if item.sku and item.sku != product.sku:
+        existing = db.query(models.Product).filter(models.Product.sku == item.sku).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="SKU already exists")
+    
+    # Update only provided fields
+    update_data = item.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(product, field, value)
+    
+    db.commit()
+    db.refresh(product)
+    return product
+
+@app.delete("/products/{product_id}")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Check if product has any stock moves
+    moves_count = db.query(models.StockMove).filter(models.StockMove.product_id == product_id).count()
+    if moves_count > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete product. It has {moves_count} associated stock move(s)."
+        )
+    
+    # Check if product has stock
+    if product.stock_quantity > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete product. Current stock: {product.stock_quantity}. Please adjust stock to zero first."
+        )
+    
+    db.delete(product)
+    db.commit()
+    return {"message": "Product deleted successfully"}
 
 @app.post("/moves")
 def create_move(move: schemas.MoveCreate, db: Session = Depends(get_db)):
@@ -315,13 +453,76 @@ def create_adjustment(adjustment: schemas.AdjustmentCreate, db: Session = Depend
     }
 
 @app.get("/moves/history", response_model=List[schemas.MoveResponse])
-def get_move_history(db: Session = Depends(get_db)):
-    moves = db.query(models.StockMove)\
+def get_move_history(
+    status: Optional[str] = None,
+    type: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.StockMove)\
         .options(joinedload(models.StockMove.product), 
                  joinedload(models.StockMove.source), 
-                 joinedload(models.StockMove.dest))\
-        .order_by(models.StockMove.created_at.desc()).all()
+                 joinedload(models.StockMove.dest))
+    
+    # Apply filters
+    if status:
+        query = query.filter(models.StockMove.status == status)
+    if type:
+        query = query.filter(models.StockMove.type == type)
+    
+    # Date range filter
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(models.StockMove.created_at >= date_from_obj)
+        except ValueError:
+            pass  # Invalid date format, ignore
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d")
+            # Add one day to include the entire end date
+            date_to_obj = date_to_obj + timedelta(days=1)
+            query = query.filter(models.StockMove.created_at < date_to_obj)
+        except ValueError:
+            pass  # Invalid date format, ignore
+    
+    moves = query.order_by(models.StockMove.created_at.desc()).all()
     return moves
+
+@app.patch("/moves/{move_id}/status")
+def update_move_status(move_id: int, status_update: schemas.StatusUpdate, db: Session = Depends(get_db)):
+    # Valid status values
+    valid_statuses = ["draft", "waiting", "ready", "done", "canceled"]
+    
+    if status_update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    # Find the move
+    move = db.query(models.StockMove).filter(models.StockMove.id == move_id).first()
+    if not move:
+        raise HTTPException(status_code=404, detail="Move not found")
+    
+    # Validate status transition (basic rules)
+    current_status = move.status.lower()
+    new_status = status_update.status.lower()
+    
+    # Allow any transition for now (can add stricter rules later)
+    # For example: draft -> waiting -> ready -> done
+    # Or: any -> canceled
+    
+    # Update status
+    move.status = new_status
+    db.commit()
+    db.refresh(move)
+    
+    return {
+        "message": "Status updated successfully",
+        "move_id": move.id,
+        "old_status": current_status,
+        "new_status": new_status
+    }
 
 @app.get("/locations")
 def get_locations(db: Session = Depends(get_db)):
@@ -332,6 +533,12 @@ def dashboard_stats(db: Session = Depends(get_db)):
     # 1. Basic Product Stats
     total_products = db.query(models.Product).count()
     low_stock = db.query(models.Product).filter(models.Product.stock_quantity < 10).count()
+    
+    # 1b. Get Low Stock Products List (stock < 10)
+    low_stock_products = db.query(models.Product)\
+        .filter(models.Product.stock_quantity < 10)\
+        .order_by(models.Product.stock_quantity.asc())\
+        .all()
     
     # 2. Recent Moves (Limit 5) - Include relationships
     moves = db.query(models.StockMove)\
@@ -372,6 +579,14 @@ def dashboard_stats(db: Session = Depends(get_db)):
     return {
         "total_products": total_products,
         "low_stock": low_stock,
+        "low_stock_products": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "sku": p.sku,
+                "stock_quantity": p.stock_quantity
+            } for p in low_stock_products
+        ],
         "recent_moves": moves,
         "internal_transfers_scheduled": internal_transfers_scheduled,
         # New Nested Data for UI

@@ -6,7 +6,8 @@ import Operations from './pages/Operations';
 import MoveHistory from './pages/MoveHistory';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword'; 
+import ForgotPassword from './pages/ForgotPassword';
+import Settings from './pages/Settings'; 
 import './App.css'; // Ensure your styles are imported
 
 function Layout({ children }) {
@@ -107,13 +108,7 @@ function App() {
           <Route path="/products" element={<Products />} /> {/* "Stock" Link goes here */}
           <Route path="/history" element={<MoveHistory />} />
           
-          {/* Placeholder Route for Settings (To prevent 404) */}
-          <Route path="/settings" element={
-            <div style={{textAlign: 'center', padding: '50px', background: 'white', borderRadius: '8px', marginTop: '20px'}}>
-                <h2>Settings</h2>
-                <p style={{color: '#666'}}>Warehouse Configuration & User Management coming soon...</p>
-            </div>
-          } />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </Layout>
     </Router>

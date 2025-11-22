@@ -7,6 +7,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     total_products: 0,
     low_stock: 0,
+    low_stock_products: [],
     recent_moves: [],
     internal_transfers_scheduled: 0,
     receipts: { to_process: 0, late: 0, total: 0 },
@@ -27,6 +28,15 @@ export default function Dashboard() {
   const goToOperations = (type) => {
     // Navigate to operations page, ideally with a filter state
     navigate('/operations', { state: { type } });
+  };
+
+  const goToProducts = () => {
+    navigate('/products');
+  };
+
+  const goToProductsLowStock = () => {
+    // Navigate to products with low stock filter enabled
+    navigate('/products', { state: { lowStockFilter: true } });
   };
 
   // Helper to style operation types badges
@@ -126,6 +136,150 @@ export default function Dashboard() {
 
       <div className="header">
         <h1>Dashboard</h1>
+      </div>
+
+      {/* Low Stock Alerts Section */}
+      {stats.low_stock_products && stats.low_stock_products.length > 0 && (
+        <div style={{ 
+          marginBottom: '30px',
+          background: 'linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%)',
+          border: '2px solid #f5c6cb',
+          borderRadius: '12px',
+          padding: '20px'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            marginBottom: '15px',
+            gap: '10px'
+          }}>
+            <span style={{ fontSize: '24px' }}></span>
+            <h2 style={{ margin: 0, color: '#DC3545', fontSize: '20px' }}>Low Stock Alerts</h2>
+            <span style={{ 
+              background: '#DC3545', 
+              color: 'white', 
+              padding: '4px 12px', 
+              borderRadius: '12px',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}>
+              {stats.low_stock_products.length} {stats.low_stock_products.length === 1 ? 'Item' : 'Items'}
+            </span>
+          </div>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+            gap: '15px' 
+          }}>
+            {stats.low_stock_products.map(product => (
+              <div
+                key={product.id}
+                onClick={goToProducts}
+                style={{
+                  background: product.stock_quantity <= 3 ? '#fee' : '#fff8e1',
+                  border: `2px solid ${product.stock_quantity <= 3 ? '#f5c6cb' : '#ffd54f'}`,
+                  borderRadius: '8px',
+                  padding: '15px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div style={{ 
+                  fontSize: '28px',
+                  color: product.stock_quantity <= 3 ? '#DC3545' : '#F0AD4E'
+                }}>
+                  
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ 
+                    fontWeight: 'bold', 
+                    color: product.stock_quantity <= 3 ? '#DC3545' : '#856404',
+                    fontSize: '14px',
+                    marginBottom: '4px'
+                  }}>
+                    {product.name}
+                  </div>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#666',
+                    marginBottom: '2px'
+                  }}>
+                    SKU: {product.sku}
+                  </div>
+                  <div style={{ 
+                    fontSize: '16px', 
+                    fontWeight: 'bold',
+                    color: product.stock_quantity <= 3 ? '#DC3545' : '#F0AD4E'
+                  }}>
+                    Qty: {product.stock_quantity}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{ 
+            marginTop: '15px', 
+            textAlign: 'right' 
+          }}>
+            <button
+              onClick={goToProducts}
+              style={{
+                background: '#DC3545',
+                color: 'white',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              View All Products →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* KPI Cards Section */}
+      <div className="ops-grid" style={{marginBottom: '30px'}}>
+        {/* Products KPI Card */}
+        <div className="ops-card" style={{borderLeftColor: '#714B67'}}>
+          <div className="ops-title">Products</div>
+          <div className="ops-content">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2C3E50' }}>
+                {stats.total_products || 0}
+              </div>
+              <div style={{ fontSize: '14px', color: '#666' }}>Total Products</div>
+            </div>
+            <div className="ops-stats">
+              {stats.low_stock > 0 ? (
+                <span 
+                  className="stat-item late" 
+                  onClick={goToProductsLowStock}
+                  style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  {stats.low_stock} Low Stock
+                </span>
+              ) : (
+                <span className="stat-item" style={{ color: '#1E7E34' }}>All Stock OK</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Operational Cards Section */}

@@ -59,14 +59,14 @@ export default function Operations() {
         if (type === 'internal') { source_id = 2; dest_id = 2; } // Logic simplified for hackathon
 
         try {
-            await api.post('/moves', {
+            const res = await api.post('/moves', {
                 product_id: formData.product_id,
                 qty: formData.qty,
                 source_id,
                 dest_id,
                 type
             });
-            setMsg('Operation Successful!');
+            setMsg(`Operation Successful! Status: DRAFT. New Stock: ${res.data.new_stock}`);
             setFormData({ product_id: '', qty: '' });
             // Refresh products to get updated stock
             api.get('/products').then(res => setProducts(res.data));
