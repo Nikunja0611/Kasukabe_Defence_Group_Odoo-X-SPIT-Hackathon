@@ -18,6 +18,12 @@ class MoveCreate(BaseModel):
     qty: float
     type: str
 
+class AdjustmentCreate(BaseModel):
+    product_id: int
+    location_id: int
+    counted_qty: float
+    reason: Optional[str] = None
+
 # --- USERS (Strict Validation) ---
 class UserCreate(BaseModel):
     login_id: str

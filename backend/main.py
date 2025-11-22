@@ -246,6 +246,74 @@ def create_move(move: schemas.MoveCreate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Success", "new_stock": product.stock_quantity}
 
+@app.post("/moves/adjustment")
+def create_adjustment(adjustment: schemas.AdjustmentCreate, db: Session = Depends(get_db)):
+    # 1. Validate product exists
+    product = db.query(models.Product).filter(models.Product.id == adjustment.product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # 2. Validate location exists
+    location = db.query(models.Location).filter(models.Location.id == adjustment.location_id).first()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    
+    # 3. Get current stock
+    current_stock = product.stock_quantity
+    
+    # 4. Calculate difference (counted - current)
+    difference = adjustment.counted_qty - current_stock
+    
+    # 5. Get Inventory Loss location (ID: 4)
+    inventory_loss = db.query(models.Location).filter(models.Location.type == "loss").first()
+    if not inventory_loss:
+        raise HTTPException(status_code=500, detail="Inventory Loss location not found. Please seed database.")
+    
+    # 6. Create adjustment move
+    # Source = Inventory Loss, Dest = Target Location
+    # If difference is positive: stock increases (from loss to location)
+    # If difference is negative: stock decreases (from location to loss)
+    if difference > 0:
+        # Stock increase: Inventory Loss -> Location
+        source_id = inventory_loss.id
+        dest_id = adjustment.location_id
+        qty = abs(difference)
+    elif difference < 0:
+        # Stock decrease: Location -> Inventory Loss
+        source_id = adjustment.location_id
+        dest_id = inventory_loss.id
+        qty = abs(difference)
+    else:
+        # No change needed, but still log it
+        source_id = inventory_loss.id
+        dest_id = adjustment.location_id
+        qty = 0
+    
+    new_move = models.StockMove(
+        product_id=adjustment.product_id,
+        source_id=source_id,
+        dest_id=dest_id,
+        qty=qty,
+        type="adjustment",
+        status="draft"
+    )
+    
+    # 7. Update stock quantity
+    product.stock_quantity = adjustment.counted_qty
+    
+    db.add(new_move)
+    db.commit()
+    db.refresh(new_move)
+    
+    return {
+        "message": "Adjustment created successfully",
+        "current_stock": current_stock,
+        "counted_qty": adjustment.counted_qty,
+        "difference": difference,
+        "new_stock": product.stock_quantity,
+        "move_id": new_move.id
+    }
+
 @app.get("/moves/history", response_model=List[schemas.MoveResponse])
 def get_move_history(db: Session = Depends(get_db)):
     moves = db.query(models.StockMove)\
